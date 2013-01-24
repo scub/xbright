@@ -1,0 +1,104 @@
+#!/usr/bin/python
+# 
+# xbright v1 [ 1/1/2013 ]
+#
+#	Manually Set Or Report Backlight Brightness 
+#
+#
+from argparse import ArgumentParser
+import sys
+
+class xbright( object ):
+	def __init__( self ):
+		self.obj = {
+                        'cur_path'      : '/sys/class/backlight/intel_backlight/brightness',
+                        'max_path'      : '/sys/class/backlight/intel_backlight/max_brightness',
+
+			'cur'		: None,
+			'max'		: self.max(),
+		}
+
+
+	def set( self, level ):
+		"""
+			Set The Backlight Level
+
+			  Writes the given level to /sys/class/backlight/intel_backlight/brightness
+
+			@param STR level - Given Level [Parsed From CLI]
+		"""
+		if int( level ) > int( self.obj['max'] ):
+			print "\t[!] Given Level {} To High To Set, Max is {}".format( level, self.obj['max'] )
+			sys.exit( -1 )
+
+		try:
+			with open( self.obj['cur_path'], 'w' ) as fd:
+				fd.write( "{}".format( level ) )
+				fd.close()
+		except IOError:
+			print 'Unable to write brightness to file' 
+
+	def get( self ):
+		"""
+			Returns The Current Backlight Level
+
+			  Reads the given level from /sys/class/backlight/intel_backlight/brightness
+
+			@return None - Unable To Open File For Reading
+			@return INT  - Current Backlight Level
+		"""
+		try:
+			with open( self.obj['cur_path'], 'r' ) as fd:
+				self.obj['cur'] = int( fd.read().strip() )
+				fd.close()
+				return self.obj['cur']
+		except IOError:
+			print 'Unable To Retrieve Current Brightness From File'
+
+		return None
+
+	def max( self ):
+		"""
+			Returns the Maximum Brightness Level
+
+			  Reads the max brightness level from /sys/class/backlight/intel_backlight/max_brightness
+
+			@return None - Unable To Open File For Reading
+			@return INT  - Max Backlight level
+		"""
+		try:
+	                with open( '/sys/class/backlight/intel_backlight/max_brightness', 'r' ) as fd:
+				out = int( fd.read().strip() )
+				fd.close()
+				return out
+		except IOError:
+			print 'Unable To Retrieve Max Brightness Level From File'
+		return None
+
+
+	def cli( self ):
+		"""
+			Parse Command Flags And Arguments
+		"""
+		parser = ArgumentParser( description='Set Backlight Brightness' )
+
+                parser.add_argument( '-c', '--current', action='store_true', dest='current', default=False,
+                                        help='Return The Current And Maximum brightness [ Current / Maximum ]' )
+
+		parser.add_argument( '-s', '--set', dest="level", 
+					help='Set Brightness To Given Level' )
+
+		args = parser.parse_args()
+
+		if args.level is not None:
+			self.set( args.level.strip() )
+
+		if args.current is True:
+			print "\t[+]  Backlight Level [Current / Max] => [ {} / {} ]".format( self.get(), self.obj['max'] )
+
+
+
+if __name__ == '__main__':
+	xb = xbright()
+	xb.cli()
+
